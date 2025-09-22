@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Electricity Bill - Mini App</title>
+  <style>
+    :root{--accent:#0ea5a4;--muted:#6b7280;font-family:system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:#f3f7f9;color:#0f172a;font-family:var(--font);display:flex;min-height:100vh;align-items:center;justify-content:center}
+    .card{width:980px;max-width:96%;background:#fff;padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(16,24,40,.08)}
+    h1,h2{margin:0 0 12px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    label{font-size:13px;color:#374151}
+    input,select,button,textarea{padding:10px;border-radius:8px;border:1px solid #e6eef2;font-size:14px;width:100%;box-sizing:border-box}
+    button{background:var(--accent);color:#fff;border:0;cursor:pointer}
+    button.alt{background:#6b7280}
+    .hidden{display:none}
+    .small{max-width:180px}
+    .list{max-height:220px;overflow:auto;border:1px solid #eef2f7;padding:8px;border-radius:8px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:6px;border-bottom:1px dashed #eef2f7;text-align:left;font-size:13px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .muted{color:var(--muted);font-size:13px}
+    canvas{max-width:100%;border:1px solid #e6eef2f;background:#fff}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <div class="card" id="app">
+    <!-- AUTH VIEWS -->
+    <div id="authViews">
+      <div class="topbar">
+        <h1>বিদ্যুৎ বিল ম্যানেজার</h1>
+        <div id="authNav">
+          <button id="showLoginBtn" class="alt">Login</button>
+          <button id="showSignupBtn">Sign up</button>
+        </div>
+      </div>
+
+      <!-- Login -->
+      <div id="loginView">
+        <h2>লগইন</h2>
+        <label>ইমেইল <input id="loginEmail" type="email" placeholder="you@example.com"></label>
+        <label>পাসওয়ার্ড <input id="loginPass" type="password" placeholder="password"></label>
+        <div class="row actions">
+          <button id="loginBtn">Login</button>
+          <button id="toSignup" class="alt">Create new account</button>
+        </div>
+        <div class="muted" style="margin-top:10px">নোট: অ্যাকাউন্ট তৈরি করলে আপনাকে অ্যাক্টিভেট করতে হবে (Activate)।</div>
+      </div>
+
+      <!-- Signup -->
+      <div id="signupView" class="hidden">
+        <h2>নতুন একাউন্ট</h2>
+        <label>নাম <input id="signupName" type="text" placeholder="আপনার নাম"></label>
+        <label>বাড়ি / কোম্পানি নাম <input id="signupCompany" type="text" placeholder="বাড়ি বা কোম্পানি"></label>
+        <label>ইমেইল <input id="signupEmail" type="email" placeholder="you@example.com"></label>
+        <label>পাসওয়ার্ড <input id="signupPass" type="password" placeholder="password"></label>
+        <div class="row actions">
+          <button id="signupBtn">Create Account</button>
+          <button id="toLogin" class="alt">Back to Login</button>
+        </div>
+        <div id="afterSignup" class="muted" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- APP MAIN -->
+    <div id="mainApp" class="hidden">
+      <div class="topbar">
+        <div>
+          <strong id="userLabel"></strong>
+          <div class="muted" id="companyLabel"></div>
+        </div>
+        <div>
+          <button id="logoutBtn" class="alt">Logout</button>
+        </div>
+      </div>
+
+      <!-- meter form -->
+      <div style="border:1px solid #eef2f7;padding:12px;border-radius:8px;margin-bottom:12px">
+        <div class="row">
+          <div class="col">
+            <label>মিটার নাম্বার
+              <select id="meterSelect"></select>
+            </label>
+          </div>
+          <div class="col small">
+            <label>রেট (৳/unit)
+              <select id="rateSelect"></select>
+            </label>
+          </div>
+          <div class="col small">
+            <label>তারিখ
+              <input id="dateInput" type="date">
+            </label>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>বর্তমান ইউনিট (Current Unit)
+              <input id="currentUnit" type="number" min="0">
+            </label>
+          </div>
+          <div class="col">
+            <label>পূর্বের ইউনিট (Previous Unit)
+              <input id="previousUnit" type="number" readonly>
+            </label>
+          </div>
+          <div class="col small">
+            <label>মোট ইউনিট (Total)
+              <input id="totalUnits" type="number" readonly>
+            </label>
+          </div>
+          <div class="col small">
+            <label>মোট টাকা (Amount)
+              <input id="totalAmount" type="text" readonly>
+            </label>
+          </div>
+        </div>
+
+        <div class="row actions" style="margin-top:8px">
+          <button id="saveBtn">Save</button>
+          <button id="resetLastBtn" class="alt">Reset Last Entry</button>
+          
+        </div>
+        <div class="muted" style="margin-top:8px">প্রতিটি সেভ একটি রেকর্ড হিসেবে сақится; প্রতিটি মিটারের জন্য আলাদা শিট তৈরি হবে।</div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <!-- sheet list -->
+        <div style="flex:1;min-width:320px">
+          <h3>Saved Entries (Selected Meter)</h3>
+          <div class="list" id="sheetList">No entries yet.</div>
+        </div>
+
+        <!-- preview canvas -->
+        <div style="flex:1;min-width:300px">
+          <h3>Preview</h3>
+          <canvas id="billCanvas" width="600" height="420"></canvas>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* --------- Utilities ---------- */
+function $(id){return document.getElementById(id)}
+function nowDateISO(){ return new Date().toISOString().slice(0,10) }
+
+/* --------- AUTH STORAGE (simple localStorage based) ---------- */
+/*
+  users stored as "eb_users" => JSON array of {name,company,email,pass,active}
+  session stored as "eb_session" => email of logged-in user
+*/
+const USERS_KEY = 'eb_users_v1';
+const SESSION_KEY = 'eb_session_v1';
+
+function loadUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY) || '[]') }catch(e){return []} }
+function saveUsers(u){ localStorage.setItem(USERS_KEY, JSON.stringify(u)) }
+function setSession(email){ localStorage.setItem(SESSION_KEY, email) }
+function clearSession(){ localStorage.removeItem(SESSION_KEY) }
+function getSession(){ return localStorage.getItem(SESSION_KEY) }
+
+/* --------- Elements ---------- */
+const loginView = $('loginView'), signupView = $('signupView')
+const showLoginBtn = $('showLoginBtn'), showSignupBtn = $('showSignupBtn')
+const loginBtn = $('loginBtn'), signupBtn = $('signupBtn')
+const toSignup = $('toSignup'), toLogin = $('toLogin')
+const afterSignup = $('afterSignup')
+
+const mainApp = $('mainApp'), authViews = $('authViews')
+const userLabel = $('userLabel'), companyLabel = $('companyLabel')
+const logoutBtn = $('logoutBtn')
+
+/* meter elements */
+const meterSelect = $('meterSelect'), rateSelect = $('rateSelect'), dateInput = $('dateInput')
+const currentUnit = $('currentUnit'), previousUnit = $('previousUnit'), totalUnits = $('totalUnits'), totalAmount = $('totalAmount')
+
+
+
+/* login/signup inputs */
+const loginEmail = $('loginEmail'), loginPass = $('loginPass')
+const signupName = $('signupName'), signupCompany = $('signupCompany'), signupEmail = $('signupEmail'), signupPass = $('signupPass')
+
+/* ---------- Init UI ---------- */
+dateInput.value = nowDateISO()
+for(let i=1;i<=100;i++){ const o=document.createElement('option'); o.value=i; o.textContent = i; meterSelect.appendChild(o) }
+for(let r=1;r<=100;r++){ const o=document.createElement('option'); o.value=r; o.textContent = r; rateSelect.appendChild(o) }
+
+/* ---------- Auth UI handlers ---------- */
+showLoginBtn.addEventListener('click', ()=>{ loginView.classList.remove('hidden'); signupView.classList.add('hidden') })
+showSignupBtn.addEventListener('click', ()=>{ signupView.classList.remove('hidden'); loginView.classList.add('hidden') })
+toSignup.addEventListener('click', ()=>{ signupView.classList.remove('hidden'); loginView.classList.add('hidden') })
+toLogin.addEventListener('click', ()=>{ loginView.classList.remove('hidden'); signupView.classList.add('hidden') })
+
+signupBtn.addEventListener('click', ()=>{
+  const name = signupName.value.trim(), company = signupCompany.value.trim()
+  const email = signupEmail.value.trim().toLowerCase(), pass = signupPass.value
+  if(!name||!email||!pass){ alert('সব ফিল্ড পূরণ করুন'); return }
+  const users = loadUsers()
+  if(users.find(u=>u.email===email)){ alert('এই ইমেইল আগে থেকেই আছে — লগইন করুন'); return }
+  users.push({name,company,email,pass,active:false})
+  saveUsers(users)
+  afterSignup.textContent = 'Account created. Click Activate to enable login (simulation).'
+  // Provide an Activate button for simulation:
+  afterSignup.innerHTML = 'Account created. <button id="activateBtn">Activate account</button> — তারপর লগইন করতে পারবেন.'
+  $('activateBtn').addEventListener('click', ()=>{
+    const u = loadUsers(); const idx = u.findIndex(x=>x.email===email)
+    if(idx>=0){ u[idx].active = true; saveUsers(u); afterSignup.textContent = 'Account activated. Now go to Login.' }
+  })
+})
+
+loginBtn.addEventListener('click', ()=>{
+  const email = loginEmail.value.trim().toLowerCase(), pass = loginPass.value
+  const users = loadUsers()
+  const u = users.find(x=>x.email===email && x.pass===pass)
+  if(!u){ alert('ইমেইল / পাসওয়ার্ড মেলেনি'); return }
+  if(!u.active){ alert('অ্যাকাউন্ট অ্যাক্টিভ নয় — আগে Activate করুন'); return }
+  setSession(u.email)
+  showMainForUser(u)
+})
+
+logoutBtn.addEventListener('click', ()=>{
+  clearSession();
+  mainApp.classList.add('hidden');
+  authViews.classList.remove('hidden');
+  loginView.classList.remove('hidden');
+  signupView.classList.add('hidden');
+})
+
+/* ---------- MAIN APP logic ---------- */
+
+function userKeyPrefix(email){
+  // ensure safe key
+  return 'eb_' + email.replace(/[@.]/g,'_')
+}
+
+function sheetKey(email,meter){ return `${userKeyPrefix(email)}_meter_${meter}_sheet` }
+
+function loadSheet(email,meter){
+  try{ return JSON.parse(localStorage.getItem(sheetKey(email,meter)) || '[]') }catch(e){ return [] }
+}
+function saveSheet(email,meter,arr){ localStorage.setItem(sheetKey(email,meter), JSON.stringify(arr)) }
+
+function showMainForUser(user){
+  authViews.classList.add('hidden')
+  mainApp.classList.remove('hidden')
+  userLabel.textContent = user.name + ' (' + user.email + ')'
+  companyLabel.textContent = user.company||''
+  // set up initial meter view for this user
+  currentUser = user
+  meterSelect.value = 1
+  loadMeterData()
+}
+
+/* session restore */
+let currentUser = null
+window.addEventListener('load', ()=>{
+  const session = getSession()
+  if(session){
+    const u = loadUsers().find(x=>x.email===session)
+    if(u){ showMainForUser(u); return }
+  }
+  // otherwise show login (default)
+  loginView.classList.remove('hidden')
+})
+
+/* When meter changes */
+meterSelect.addEventListener('change', loadMeterData)
+rateSelect.addEventListener('change', computeTotals)
+
+function loadMeterData(){
+  if(!currentUser) return
+  const m = meterSelect.value
+  const sheet = loadSheet(currentUser.email,m)
+  if(sheet.length>0){
+    const last = sheet[sheet.length-1]
+    previousUnit.value = last.currentUnit
+    currentUnit.value = '' // keep current blank so user types new reading
+    // If you prefer to prefill currentUnit with last value uncomment next line:
+    // currentUnit.value = last.currentUnit
+  } else {
+    previousUnit.value = 0
+    currentUnit.value = ''
+  }
+  renderSheetList(sheet)
+  computeTotals()
+}
+
+currentUnit.addEventListener('input', computeTotals)
+
+function computeTotals(){
+  const cur = Number(currentUnit.value || 0)
+  const prev = Number(previousUnit.value || 0)
+  let tu = cur - prev
+  if(isNaN(tu) || tu < 0) tu = 0
+  totalUnits.value = tu
+  const rate = Number(rateSelect.value || 0)
+  const amt = tu * rate
+  totalAmount.value = amt.toFixed(2) + ' ৳'
+}
+
+/* Save entry */
+saveBtn.addEventListener('click', ()=>{
+  if(!currentUser){ alert('Please login'); return }
+  const meter = meterSelect.value
+  const sheet = loadSheet(currentUser.email,meter)
+  const entry = {
+    date: dateInput.value || nowDateISO(),
+    previousUnit: Number(previousUnit.value||0),
+    currentUnit: Number(currentUnit.value||0),
+    totalUnits: Number(totalUnits.value||0),
+    rate: Number(rateSelect.value||0),
+    amount: Number(totalUnits.value||0) * Number(rateSelect.value||0)
+  }
+  sheet.push(entry)
+  saveSheet(currentUser.email,meter,sheet)
+  // update previous/current UI
+  previousUnit.value = entry.currentUnit
+  currentUnit.value = ''
+  renderSheetList(sheet)
+  computeTotals()
+  alert('Entry saved for meter ' + meter)
+})
+
+/* Render list */
+function renderSheetList(sheet){
+  if(!sheet || sheet.length===0){ sheetList.innerHTML = '<div class="muted">No entries yet for this meter.</div>'; return }
+  let html = '<table><thead><tr><th>Date</th><th>Prev</th><th>Cur</th><th>Units</th><th>Rate</th><th>Amt</th></tr></thead><tbody>'
+  for(let i=sheet.length-1;i>=0;i--){
+    const e = sheet[i]
+    html += `<tr><td>${e.date}</td><td>${e.previousUnit}</td><td>${e.currentUnit}</td><td>${e.totalUnits}</td><td>${e.rate} ৳</td><td>${Number(e.amount).toFixed(2)} ৳</td></tr>`
+  }
+  html += '</tbody></table>'
+  sheetList.innerHTML = html
+}
+
+/* Reset last entry */
+resetLastBtn.addEventListener('click', ()=>{
+  if(!currentUser) return
+  const meter = meterSelect.value
+  const sheet = loadSheet(currentUser.email,meter)
+  if(sheet.length===0){ alert('No entries to remove'); return }
+  if(!confirm('সত্যিই সর্বশেষ এন্ট্রি মুছে ফেলবেন?')) return
+  sheet.pop()
+  saveSheet(currentUser.email,meter,sheet)
+  previousUnit.value = sheet.length>0 ? sheet[sheet.length-1].currentUnit : 0
+  currentUnit.value = ''
+  renderSheetList(sheet)
+  computeTotals()
+  alert('সর্বশেষ এন্ট্রি মুছে ফেলা হয়েছে')
+})
+
+/* Preview draw on canvas */
+
+function drawBill(entry){
+  // basic canvas draw sized to element (fixed size used)
+  const W = billCanvas.width, H = billCanvas.height
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H)
+  ctx.fillStyle = '#0f172a'; ctx.font = '20px sans-serif'; ctx.fillText('বিদ্যুৎ বিল', 20, 40)
+  ctx.font = '14px sans-serif'; ctx.fillText('Date: '+entry.date, 20, 66)
+  ctx.fillText('Meter: '+meterSelect.value, 200, 66)
+  ctx.strokeStyle = '#e6eef2'; ctx.strokeRect(18,90,W-36,160)
+  ctx.font = '16px sans-serif'
+  ctx.fillText('Previous Unit: '+entry.previousUnit, 30, 120)
+  ctx.fillText('Current Unit: '+entry.currentUnit, 30, 150)
+  ctx.fillText('Total Units: '+entry.totalUnits, 320, 120)
+  ctx.fillText('Rate: '+entry.rate+' ৳/unit', 320, 150)
+  ctx.font = '18px sans-serif'; ctx.fillText('Total Amount: '+Number(entry.amount).toFixed(2)+' ৳', 30, 210)
+  ctx.font = '12px sans-serif'; ctx.fillText('Generated by Electricity Bill Manager', 20, H-20)
+}
+
+/* Preview & open preview page */
+previewBtn.addEventListener('click', ()=>{
+  const entry = {
+    date: dateInput.value || nowDateISO(),
+    previousUnit: Number(previousUnit.value||0),
+    currentUnit: Number(currentUnit.value||0),
+    totalUnits: Number(totalUnits.value||0),
+    rate: Number(rateSelect.value||0),
+    amount: Number(totalUnits.value||0) * Number(rateSelect.value||0)
+  }
+  drawBill(entry)
+  alert('Preview ready in the right panel. Use "Open Preview Page" to open full-size JPEG in a new tab.')
+})
+
+openPreviewPage.addEventListener('click', ()=>{
+  // get image data as JPEG and open new window with image + download link
+  const dataURL = billCanvas.toDataURL('image/jpeg', 0.95)
+  const win = window.open('', '_blank')
+  if(!win){ alert('Popup blocked — allow popups for this site'); return }
+  const meter = meterSelect.value
+  const filename = `bill_meter${meter}_${(dateInput.value||nowDateISO()).replace(/:/g,'-')}.jpg`
+  win.document.write(`
+    <html><head><title>Bill Preview</title></head>
+    <body style="margin:0;font-family:Arial,Helvetica,sans-serif">
+      <div style="padding:12px">
+        <h2>Bill Preview - Meter ${meter}</h2>
+        <img id="billImg" src="${dataURL}" style="max-width:100%;border:1px solid #ddd" />
+        <div style="margin-top:12px">
+          <a id="dl" href="${dataURL}" download="${filename}" style="display:inline-block;padding:10px 14px;background:#0ea5a4;color:#fff;border-radius:8px;text-decoration:none">Download JPG</a>
+        </div>
+      </div>
+    </body></html>
+  `)
+})
+
+/* Monthly print preview (renders all entries for current month into canvas, then opens preview page) */
+monthlyPreviewBtn.addEventListener('click', ()=>{
+  if(!currentUser) return
+  const meter = meterSelect.value
+  const sheet = loadSheet(currentUser.email,meter)
+  if(!sheet || sheet.length===0){ alert('No entries for this meter'); return }
+  const now = new Date()
+  const curMonth = now.getMonth(), curYear = now.getFullYear()
+  const entries = sheet.filter(e=>{ const d = new Date(e.date); return d.getMonth()===curMonth && d.getFullYear()===curYear })
+  if(entries.length===0){ alert('No entries for current month'); return }
+  // draw a long canvas
+  const lineH = 24
+  const headerH = 80
+  const footerH = 40
+  const H = Math.max(400, headerH + (entries.length+2)*lineH + footerH)
+  billCanvas.width = 800; billCanvas.height = H
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,billCanvas.width,H)
+  ctx.fillStyle='#0f172a'; ctx.font='20px sans-serif'; ctx.fillText('Monthly Report - Meter '+meter, 20, 30)
+  ctx.font='14px sans-serif'; ctx.fillText('Month: '+(curMonth+1)+' / '+curYear, 20, 54)
+  // table header
+  let y = headerH
+  ctx.font='14px sans-serif'
+  ctx.fillText('Date', 20, y); ctx.fillText('Prev', 140, y); ctx.fillText('Cur', 240, y); ctx.fillText('Units', 360, y); ctx.fillText('Rate', 460, y); ctx.fillText('Amt', 560, y)
+  y += lineH
+  let total = 0
+  entries.forEach(ent=>{
+    ctx.fillText(ent.date, 20, y); ctx.fillText(String(ent.previousUnit), 140, y); ctx.fillText(String(ent.currentUnit), 240, y)
+    ctx.fillText(String(ent.totalUnits), 360, y); ctx.fillText(String(ent.rate), 460, y); ctx.fillText(Number(ent.amount).toFixed(2), 560, y)
+    total += Number(ent.amount)
+    y += lineH
+  })
+  y += lineH
+  ctx.fillText('Total: '+total.toFixed(2)+' ৳', 20, y)
+  // open in new window as JPEG
+  const dataURL = billCanvas.toDataURL('image/jpeg',0.95)
+  const win = window.open('', '_blank')
+  if(!win){ alert('Popup blocked — allow popups for this site'); return }
+  const filename = `monthly_meter${meter}_${curYear}_${curMonth+1}.jpg`
+  win.document.write(`
+    <html><head><title>Monthly Preview</title></head>
+    <body style="margin:0;font-family:Arial,Helvetica,sans-serif">
+      <div style="padding:12px">
+        <h2>Monthly Report - Meter ${meter}</h2>
+        <img src="${dataURL}" style="max-width:100%;border:1px solid #ddd" />
+        <div style="margin-top:12px">
+          <a href="${dataURL}" download="${filename}" style="display:inline-block;padding:10px 14px;background:#0ea5a4;color:#fff;border-radius:8px;text-decoration:none">Download JPG</a>
+        </div>
+      </div>
+    </body></html>
+  `)
+})
+
+/* If user logs in elsewhere, reflect storage changes (optional) */
+window.addEventListener('storage', (e)=>{
+  const session = getSession()
+  if(session && currentUser && session === currentUser.email){
+    // reload sheet for current meter
+    loadMeterData()
+  }
+})
+</script>
+</body>
+</html>
